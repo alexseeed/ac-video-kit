@@ -2,7 +2,7 @@
 
 Selbst betriebenes Tool für personalisierte Prospecting-Videos: Pro Lead wird eine Website per Screenshot aufgenommen, mit einer runden Facecam-Bubble aus einer Basisaufnahme kombiniert und als MP4 gerendert. Die öffentliche API und die Webhook-Payloads sind Pitchlane-kompatibel, sodass bestehende Aufrufer nur Basis-URL und API-Key umstellen.
 
-Lizenz: noch nicht festgelegt, Weitergabe nur nach Absprache.
+Lizenz: Nutzung und Änderung im eigenen Unternehmen erlaubt, Weitergabe und Weiterverkauf nicht. Details in [LICENSE](LICENSE).
 
 ## Architektur
 
