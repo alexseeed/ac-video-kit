@@ -1,0 +1,11 @@
+[Unit]
+Description=video-kit Mux retention (90 days)
+Wants=network-online.target
+After=network-online.target
+OnFailure=video-kit-retention-alarm.service
+
+[Service]
+Type=oneshot
+TimeoutStartSec=1800
+EnvironmentFile=/etc/video-kit-retention.env
+ExecStart=/usr/local/sbin/video-kit-retention

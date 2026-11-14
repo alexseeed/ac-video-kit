@@ -1,0 +1,7 @@
+[Unit]
+Description=video-kit Mux retention failure alarm
+
+[Service]
+Type=oneshot
+# hier eigene Benachrichtigung eintragen
+ExecStart=/bin/true

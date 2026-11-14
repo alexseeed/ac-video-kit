@@ -1,0 +1,18 @@
+# Copy to ~/.config/video-kit/worker.env; chmod 600. Shell assignments only.
+SERVER_URL=https://video.example.com
+WORKER_TOKEN=change-me
+MUX_TOKEN_ID=change-me
+MUX_TOKEN_SECRET=change-me
+DATA_ROOT_DIR=/var/lib/video-kit/data
+DATA_DIR=/var/lib/video-kit/data
+CAMPAIGNS_DIR=/var/lib/video-kit/data/campaigns
+WORKER_APP_DIR=/opt/video-kit/app
+NODE_BIN_DIR=/usr/local/bin
+RENDER_PARALLEL=2
+SCREENSHOT_PARALLEL=3
+SCREENSHOT_TIMEOUT_MS=45000
+UPLOAD_PARALLEL=3
+WORKER_BATCH_SIZE=8
+KEEP_OUTPUT=0
+# Optional: h264_videotoolbox (macOS-Standard) oder libx264 (Linux-Standard).
+# VIDEO_ENCODER=libx264

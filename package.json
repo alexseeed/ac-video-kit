@@ -1,0 +1,19 @@
+{
+  "name": "video-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.23.0" },
+  "bin": { "campaign": "bin/campaign", "worker": "bin/worker", "webhooks": "bin/webhooks", "mux": "bin/mux" },
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "test": "tsx --test --test-concurrency=1 test/*.test.ts",
+    "check": "tsc --noEmit",
+    "campaign": "tsx src/cli.ts campaign",
+    "worker": "tsx src/cli.ts worker",
+    "webhooks": "tsx src/cli.ts webhooks",
+    "mux": "tsx src/cli.ts mux"
+  },
+  "dependencies": { "better-sqlite3": "12.4.1", "playwright": "1.64.1" },
+  "devDependencies": { "@types/better-sqlite3": "7.6.13", "@types/node": "22.18.0", "tsx": "4.20.5", "typescript": "5.9.2" }
+}

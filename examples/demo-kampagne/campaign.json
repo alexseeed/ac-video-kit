@@ -1,0 +1,20 @@
+{
+  "id": "demo-kampagne",
+  "name": "Demo-Kampagne",
+  "baseVideo": "base.mp4",
+  "output": { "width": 1280, "height": 720, "fps": 24 },
+  "bubble": { "corner": "bottom-right", "diameterPct": 30, "marginPct": 4 },
+  "pages": [
+    { "start": 0, "end": 4, "type": "website", "variable": "website_0", "label": "Demo-Website" }
+  ],
+  "leadSchemaMapping": { "website": "capture_url", "originalUid": "originalUid" },
+  "landing": {
+    "title": "Video für {{first_name}}",
+    "text": "Hallo {{company_name}}, das ist ein lokal erzeugtes Demo-Video.",
+    "ctaLabel": "Termin buchen",
+    "ctaUrl": "https://example.invalid/termin",
+    "brandColor": "#111827",
+    "imprintUrl": "https://example.invalid/impressum",
+    "privacyUrl": "https://example.invalid/datenschutz"
+  }
+}

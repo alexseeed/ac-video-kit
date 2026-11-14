@@ -1,0 +1,24 @@
+bot
+crawler
+spider
+slurp
+preview
+scanner
+headless
+facebookexternalhit
+facebot
+Twitterbot
+LinkedInBot
+Slackbot
+Discordbot
+WhatsApp
+Google-InspectionTool
+Microsoft Office
+Microsoft Outlook
+Proofpoint
+Mimecast
+Barracuda
+SafeLinks
+curl/
+wget/
+python-requests

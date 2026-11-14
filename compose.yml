@@ -1,0 +1,30 @@
+# Video-Kit-Server. Dahinter einen eigenen Reverse-Proxy mit TLS betreiben
+# (z. B. Caddy, nginx oder Traefik) und PUBLIC_BASE_URL auf die öffentliche
+# Domain zeigen lassen. Der Container selbst lauscht nur auf 127.0.0.1.
+services:
+  video-kit:
+    image: video-kit:${VIDEO_KIT_IMAGE_TAG:-latest}
+    container_name: video-kit
+    init: true
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATA_ROOT_DIR: /opt/video-kit/data
+      DATA_DIR: /opt/video-kit/data
+      PUBLIC_BASE_URL: https://${PUBLIC_HOST:?Set PUBLIC_HOST in .env}
+      DISPATCH_ENABLED: ${DISPATCH_ENABLED:-1}
+    ports:
+      - 127.0.0.1:${HOST_PORT:-3000}:3000
+    volumes:
+      - ./data:/opt/video-kit/data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
