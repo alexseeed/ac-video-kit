@@ -53,6 +53,13 @@ export function webhookAddressBlocked(address: string): boolean {
   return true;
 }
 const blockedError = () => Object.assign(Error('webhook target blocked'), { code: 'EBLOCKEDPRIVATE' });
+function webhookDnsTimeoutMs(): number {
+  const raw = process.env.WEBHOOK_DNS_TIMEOUT_MS;
+  if (!raw) return 5000;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 100 || value > 60000) throw Error('WEBHOOK_DNS_TIMEOUT_MS must be an integer between 100 and 60000');
+  return value;
+}
 function postWebhook(target: string, payload: string, resolveAll: WebhookLookup): Promise<number> {
   return new Promise((resolve, reject) => {
     let url: URL;
@@ -62,15 +69,31 @@ function postWebhook(target: string, payload: string, resolveAll: WebhookLookup)
       const host = url.hostname.replace(/^\[|\]$/g, '');
       if (process.env.ALLOW_PRIVATE_WEBHOOKS !== '1' && net.isIP(host) !== 0 && webhookAddressBlocked(host)) throw blockedError();
     } catch (error) { reject(error); return; }
+    const dnsTimeoutMs = webhookDnsTimeoutMs();
     const lookup: LookupFunction = (hostname, options, callback) => {
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        callback(Object.assign(Error('webhook lookup timeout'), { code: 'ETIMEOUT' }), '', 0);
+      }, dnsTimeoutMs);
+      timer.unref();
       resolveAll(hostname).then(
         records => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
           if (!records.length) { callback(Object.assign(Error('webhook lookup failed'), { code: 'ENOTFOUND' }), '', 0); return; }
           if (process.env.ALLOW_PRIVATE_WEBHOOKS !== '1' && records.some(record => webhookAddressBlocked(record.address))) { callback(blockedError(), '', 0); return; }
           if (options.all) callback(null, records);
           else callback(null, records[0].address, records[0].family);
         },
-        error => callback(error, '', 0),
+        error => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          callback(error, '', 0);
+        },
       );
     };
     const request = (url.protocol === 'https:' ? https : http).request(url,
@@ -100,6 +123,7 @@ export function createApp(options: AppOptions) {
   assertDeploySecret('WORKER_TOKEN', options.workerToken);
   assertDeploySecret('INTERNAL_VIEW_TOKEN', options.internalViewToken);
   assertDeploySecret('PREVIEW_SECRET', options.previewSecret);
+  webhookDnsTimeoutMs();
   const dataDir = ensureDataDirectory(options.dataDir);
   const store = new Store({ dataDir, publicBaseUrl: options.publicBaseUrl, now: options.now });
   store.cleanup();

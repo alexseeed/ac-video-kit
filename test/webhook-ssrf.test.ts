@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { dispatchOutbox, webhookAddressBlocked, type WebhookLookup } from '../src/server.js';
+import { createApp, dispatchOutbox, webhookAddressBlocked, type WebhookLookup } from '../src/server.js';
 import { Store } from '../src/store.js';
 import { campaignFixture, testDir } from './helpers.js';
 
@@ -108,6 +108,86 @@ test('ALLOW_PRIVATE_WEBHOOKS=1 delivers to loopback for local tests', async t =>
   }
   assert.equal(target.calls(), 1);
   assert.equal((store.db.prepare('SELECT state FROM outbox').get() as any).state, 'delivered');
+});
+
+test('hanging DNS lookup times out as transport error and dispatch stays usable', async t => {
+  const store = setup(t), target = await sink(t);
+  const port = new URL(target.url).port;
+  queue(store, `http://example.com:${port}/hook?token=private-fixture`);
+  const hanging: WebhookLookup = () => new Promise(() => {});
+  const beforeTimeout = process.env.WEBHOOK_DNS_TIMEOUT_MS;
+  const beforeAllow = process.env.ALLOW_PRIVATE_WEBHOOKS;
+  process.env.WEBHOOK_DNS_TIMEOUT_MS = '200';
+  delete process.env.ALLOW_PRIVATE_WEBHOOKS;
+  try {
+    const started = Date.now();
+    await dispatchOutbox(store, { lookup: hanging });
+    assert.ok(Date.now() - started < 2000, 'dispatchOutbox ends in under 2 seconds');
+  } finally {
+    if (beforeTimeout === undefined) delete process.env.WEBHOOK_DNS_TIMEOUT_MS;
+    else process.env.WEBHOOK_DNS_TIMEOUT_MS = beforeTimeout;
+    if (beforeAllow === undefined) delete process.env.ALLOW_PRIVATE_WEBHOOKS;
+    else process.env.ALLOW_PRIVATE_WEBHOOKS = beforeAllow;
+  }
+  assert.equal(target.calls(), 0);
+  // Transport errors are stored as delivery_failed, like the failed-lookup test above.
+  const row: any = store.db.prepare('SELECT state,attempts,last_error FROM outbox').get();
+  assert.deepEqual(row, { state: 'pending', attempts: 1, last_error: 'delivery_failed' });
+  store.db.prepare('UPDATE outbox SET next_at=?').run(0);
+  const resolving: WebhookLookup = async () => [{ address: '127.0.0.1', family: 4 }];
+  process.env.ALLOW_PRIVATE_WEBHOOKS = '1';
+  try {
+    await dispatchOutbox(store, { lookup: resolving });
+  } finally {
+    if (beforeAllow === undefined) delete process.env.ALLOW_PRIVATE_WEBHOOKS;
+    else process.env.ALLOW_PRIVATE_WEBHOOKS = beforeAllow;
+  }
+  assert.equal(target.calls(), 1);
+  assert.equal((store.db.prepare('SELECT state FROM outbox').get() as any).state, 'delivered');
+});
+
+test('late DNS answer after the timeout is ignored without send or crash', async t => {
+  const store = setup(t), target = await sink(t);
+  const port = new URL(target.url).port;
+  queue(store, `http://example.com:${port}/hook?token=private-fixture`);
+  let answers = 0;
+  const late: WebhookLookup = () => new Promise(resolve => setTimeout(() => { answers++; resolve([{ address: '127.0.0.1', family: 4 }]); }, 400));
+  const before = process.env.WEBHOOK_DNS_TIMEOUT_MS;
+  process.env.WEBHOOK_DNS_TIMEOUT_MS = '200';
+  try {
+    await dispatchOutbox(store, { lookup: late });
+  } finally {
+    if (before === undefined) delete process.env.WEBHOOK_DNS_TIMEOUT_MS;
+    else process.env.WEBHOOK_DNS_TIMEOUT_MS = before;
+  }
+  assert.equal(target.calls(), 0);
+  const row: any = store.db.prepare('SELECT state,attempts,last_error FROM outbox').get();
+  assert.deepEqual(row, { state: 'pending', attempts: 1, last_error: 'delivery_failed' });
+  await new Promise(resolve => setTimeout(resolve, 600));
+  assert.equal(answers, 1);
+  assert.equal(target.calls(), 0);
+  const again: any = store.db.prepare('SELECT state,attempts,last_error FROM outbox').get();
+  assert.deepEqual(again, { state: 'pending', attempts: 1, last_error: 'delivery_failed' });
+});
+
+test('invalid WEBHOOK_DNS_TIMEOUT_MS rejects server start', async t => {
+  const before = process.env.WEBHOOK_DNS_TIMEOUT_MS;
+  t.after(() => {
+    if (before === undefined) delete process.env.WEBHOOK_DNS_TIMEOUT_MS;
+    else process.env.WEBHOOK_DNS_TIMEOUT_MS = before;
+  });
+  for (const value of ['abc', '50', '70000']) {
+    process.env.WEBHOOK_DNS_TIMEOUT_MS = value;
+    assert.throws(() => createApp({ dataDir: testDir('webhook-dns-timeout'), publicBaseUrl: 'http://localhost',
+      apiKeys: ['offline-fixture-api-1'], workerToken: 'offline-fixture-worker', internalViewToken: 'offline-internal-1',
+      previewSecret: 'offline-preview-secret', dispatch: false }), /WEBHOOK_DNS_TIMEOUT_MS/);
+  }
+  process.env.WEBHOOK_DNS_TIMEOUT_MS = '200';
+  const app = createApp({ dataDir: testDir('webhook-dns-timeout'), publicBaseUrl: 'http://localhost',
+    apiKeys: ['offline-fixture-api-1'], workerToken: 'offline-fixture-worker', internalViewToken: 'offline-internal-1',
+    previewSecret: 'offline-preview-secret', dispatch: false });
+  await new Promise<void>(done => app.server.listen(0, '127.0.0.1', done));
+  t.after(() => app.close());
 });
 
 test('address check covers loopback, private, link-local, CGNAT, multicast, documentation, benchmark and mapped ranges', () => {

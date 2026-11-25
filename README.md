@@ -55,6 +55,7 @@ bin/campaign render-test examples/demo-kampagne --website http://127.0.0.1:4100/
 | `DATA_DIR` | beide | wie `DATA_ROOT_DIR` | Arbeitsverzeichnis, muss darin liegen |
 | `DISPATCH_ENABLED` | Server | `1` | Webhook-Versand (`0` schaltet ab) |
 | `ALLOW_PRIVATE_WEBHOOKS` | Server | leer | Nur lokal: `1` erlaubt Webhook-Ziele im privaten Netz (SSRF-Schutz aus) |
+| `WEBHOOK_DNS_TIMEOUT_MS` | Server | `5000` | Timeout für den DNS-Lookup beim Webhook-Versand in ms (100–60000) |
 | `DEFERRED_RETRY_CAMPAIGNS` | Server | leer | Komma-Liste Kampagnen-IDs mit zurückgestellten Retries |
 | `SERVER_URL` | Worker | Pflicht | Server-Basis-URL |
 | `CAMPAIGNS_DIR` | Worker | Pflicht | Verzeichnis mit `campaign.json`-Ordnern je Kampagne |
